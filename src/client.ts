@@ -27,14 +27,5 @@ conn.addEventListener("message", (event) => {
   add(`Received -> ${event.data}`);
 });
 
-// Let's listen for when the connection opens
-// And send a ping every 2 seconds right after
-conn.addEventListener("open", () => {
-  add("Connected!");
-  add("Sending a ping every 2 seconds...");
-  // TODO: make this more interesting / nice
-  clearInterval(pingInterval);
-  pingInterval = setInterval(() => {
-    conn.send("ping");
-  }, 1000);
-});
+const input = document.getElementById("python-input") as HTMLInputElement;
+console.log(input);

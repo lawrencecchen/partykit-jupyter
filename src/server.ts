@@ -1,7 +1,19 @@
 import type * as Party from "partykit/server";
+import "setimmediate";
+import { KernelManager, ServerConnection } from "@jupyterlab/services";
 
 export default class Server implements Party.Server {
-  constructor(readonly room: Party.Room) {}
+  kernelManager: KernelManager;
+  constructor(readonly room: Party.Room) {
+    const serverSettings = ServerConnection.makeSettings({
+      baseUrl: "http://127.0.0.1:8888",
+      token: "test123",
+    });
+    const kernelManager = new KernelManager({
+      serverSettings,
+    });
+    this.kernelManager = kernelManager;
+  }
 
   onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
     // A websocket just connected!
@@ -16,7 +28,26 @@ export default class Server implements Party.Server {
     conn.send("hello from server");
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  async onMessage(message: string, sender: Party.Connection) {
+    const kernel = await this.kernelManager.startNew();
+
+    const future = kernel.requestExecute({
+      code: message,
+    });
+
+    future.onIOPub = (msg) => {
+      if (
+        msg.header.msg_type === "execute_result" ||
+        msg.header.msg_type === "stream" ||
+        msg.header.msg_type === "display_data" ||
+        msg.header.msg_type === "update_display_data" ||
+        msg.header.msg_type === "error"
+      ) {
+        // console.log(msg);
+        this.room.broadcast(JSON.stringify(msg));
+      }
+    };
+
     // let's log the message
     console.log(`connection ${sender.id} sent message: ${message}`);
     // as well as broadcast it to all the other connections in the room...
